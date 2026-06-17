@@ -1,0 +1,6 @@
+mycinefrplayer.duckdns.org {
+    tls {
+        dns duckdns 61e67744-6cc0-4c1f-83ba-dd8327f71551
+    }
+    reverse_proxy web:80
+}

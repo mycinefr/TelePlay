@@ -1,0 +1,105 @@
+# =========================================
+# TelePlay - Docker Compose
+# =========================================
+
+services:
+  # -----------------------------------------
+  # PostgreSQL Database
+  # -----------------------------------------
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-telegram_tv}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - telegram-tv-network
+
+  # -----------------------------------------
+  # Backend API + Telegram Bot
+  # -----------------------------------------
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    command: python /app/run.py
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-telegram_tv}
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_STORAGE_CHANNEL_ID: ${TELEGRAM_STORAGE_CHANNEL_ID}
+      AUTH_USERS: ${AUTH_USERS}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRY_MINUTES: ${JWT_EXPIRY_MINUTES:-10080}
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - telegram_session:/app/session
+      - ./backend:/app
+    networks:
+      - telegram-tv-network
+
+  # -----------------------------------------
+  # Web Interface (React + Nginx)
+  # -----------------------------------------
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # On enlève l'exposition du port 80 au public pour que seul Caddy y accède en interne
+    expose:
+      - "80"
+    networks:
+      - telegram-tv-network
+
+  # -----------------------------------------
+  # Reverse Proxy Caddy (Sécurisation HTTPS)
+  # -----------------------------------------
+  caddy:
+    image: serfriz/caddy-duckdns:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Remplace par ton sous-domaine duckdns (ex: mon-netflix.duckdns.org)
+      MY_DOMAIN: "mycinefrplayer.duckdns.org"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - telegram-tv-network
+
+# -----------------------------------------
+# Volumes
+# -----------------------------------------
+volumes:
+  postgres_data:
+    driver: local
+  telegram_session:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+# -----------------------------------------
+# Networks
+# -----------------------------------------
+networks:
+  telegram-tv-network:
+    driver: bridge

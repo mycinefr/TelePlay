@@ -1,0 +1,55 @@
+# =========================================
+# TelePlay - Complete Stack Configuration
+# =========================================
+# Copy this file to .env and fill in your values
+# =========================================
+
+# -----------------------------------------
+# TELEGRAM CONFIGURATION (Required)
+# -----------------------------------------
+
+# Get from https://my.telegram.org
+TELEGRAM_API_ID=27004819
+TELEGRAM_API_HASH=8afd4e1079792d3e88cc8c1e21faa8f0
+
+# Get from @BotFather
+TELEGRAM_BOT_TOKEN=8673755809:AAGoN18VIJoetbXXbfWENmIG8IwD_jY0ZJk
+
+# Your storage channel ID (starts with -100)
+TELEGRAM_STORAGE_CHANNEL_ID=-1004308630169
+
+# (Optional) Comma separated Telegram IDs of authorized users.
+# Leave empty to allow everyone to use the bot.
+AUTH_USERS=6910493014
+
+# -----------------------------------------
+# SECURITY (Required)
+# -----------------------------------------
+
+# Generate with: openssl rand -hex 32
+JWT_SECRET=1942a7db31cc493e916178e0e7f464827e25ff032e02beaeb76bbfe8136900b2
+
+# Token expiry in minutes (default: 7 days)
+JWT_EXPIRY_MINUTES=10080
+
+# -----------------------------------------
+# DATABASE (Docker uses these)
+# -----------------------------------------
+
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=Anne-Marie2006
+POSTGRES_DB=telegram_tv
+
+# -----------------------------------------
+# WEB INTERFACE
+# -----------------------------------------
+
+# Public URL where your app is accessible
+WEB_BASE_URL=http://141.253.126.214
+
+# -----------------------------------------
+# PORTS (Optional - change if conflicts)
+# -----------------------------------------
+
+BACKEND_PORT=8000
+WEB_PORT=8080
