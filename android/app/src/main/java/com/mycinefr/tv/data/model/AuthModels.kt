@@ -40,7 +40,7 @@ data class RefreshResponse(
 )
 
 data class BotInfo(
-    @SerializedName("username") val username: String,
+    @SerializedName("username") val botUsername: String, // Modifié ici de username vers botUsername
     @SerializedName("name") val name: String?,
     @SerializedName("server_version") val serverVersion: String
 )

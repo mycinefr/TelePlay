@@ -10,6 +10,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Refresh
@@ -42,8 +44,10 @@ fun MobileLoginScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    // Redirection immédiate dès que l'utilisateur est connecté (via Bot ou via Code)
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
+            android.util.Log.d("MobileLogin", "Connexion réussie, redirection...")
             onLoginSuccess()
         }
     }
@@ -113,7 +117,7 @@ fun MobileLoginScreen(
             )
             
             Text(
-                text = "Streaming multimédia sécurisé",
+                text = "Service sécurisé de streaming média",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.5f)
             )
@@ -136,7 +140,7 @@ fun MobileLoginScreen(
                         modifier = Modifier.padding(20.dp)
                     ) {
                         Text(
-                            text = "Réglages du serveur",
+                            text = "Paramètres du serveur",
                             style = MaterialTheme.typography.titleMedium,
                             color = Color.White,
                             fontWeight = FontWeight.SemiBold
@@ -181,7 +185,7 @@ fun MobileLoginScreen(
                         ) {
                             Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Enregistrer et redémarrer", fontWeight = FontWeight.Bold)
+                            Text("Sauvegarder & redémarrer", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -190,122 +194,166 @@ fun MobileLoginScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator(color = MobilePrimary)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Préparation de l'authentification...", color = Color.White.copy(alpha = 0.7f))
+                Text("Authentification au cours...", color = Color.White.copy(alpha = 0.7f))
             } else if (uiState.loginCode != null) {
-                // Instruction
-                Text(
-                    text = "Confirmez dans Telegram",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
+                // On sépare le mode normal (origine) et le mode testeur Google
+                var showGoogleInput by remember { mutableStateOf(false) }
+                var manualCode by remember { mutableStateOf("") }
 
-                // Login Code Card
-                GlassmorphismSurface(
-                    shape = RoundedCornerShape(24.dp),
-                    borderColor = MobilePrimary.copy(alpha = 0.3f)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 48.dp, vertical = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = uiState.loginCode!!,
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontSize = 42.sp,
-                                letterSpacing = 4.sp,
-                                fontWeight = FontWeight.Black
-                            ),
-                            color = MobilePrimary,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Expire dans 5 minutes",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.4f)
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(32.dp))
-                
-                // Deep Link Button
-                Button(
-                    onClick = {
-                        val bot = uiState.botUsername.ifBlank { "mycfrsurfTGBot" }
-                        val intent = android.content.Intent(
-                            android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://t.me/$bot?start=${uiState.loginCode}")
-                        )
-                        try {
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            android.widget.Toast.makeText(context, "Impossible d'ouvrir Telegram", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.05f)),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send, 
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                if (!showGoogleInput) {
+                    // 1. LE SYSTÈME ORIGINEL (Restauration complète)
+                    Text(
+                        text = "Confirmer dans Telegram",
+                         style = MaterialTheme.typography.titleLarge,
+                         color = Color.White,
+                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("Ouvrir @${uiState.botUsername.ifBlank { "mycfrsurfTGBot" }}", color = Color.White)
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                if (uiState.isPolling) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp), 
-                            strokeWidth = 2.dp,
-                            color = MobileSecondary
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    GlassmorphismSurface(
+                        shape = RoundedCornerShape(24.dp),
+                                         borderColor = MobilePrimary.copy(alpha = 0.3f)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 48.dp, vertical = 24.dp),
+                               horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = uiState.loginCode!!,
+                                 style = MaterialTheme.typography.displayLarge.copy(
+                                     fontSize = 42.sp,
+                                     letterSpacing = 4.sp,
+                                     fontWeight = FontWeight.Black
+                                 ),
+                                 color = MobilePrimary,
+                                 maxLines = 1,
+                                 softWrap = false
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Expire dans  minutes",
+                                 style = MaterialTheme.typography.labelMedium,
+                                 color = Color.White.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Bouton d'origine pour ouvrir Telegram
+                    // Bouton optimisé anti-crash mémoire
+                    Button(
+                        onClick = {
+                            val bot = uiState.botUsername.ifBlank { "mycfrsurfTGBot" }
+                            try {
+                                // 1. Ouvre l'appli Telegram directement (évite le navigateur web)
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("tg://resolve?domain=$bot&start=${uiState.loginCode}")
+                                ).apply {
+                                    // Protège notre application en forçant l'ouverture dans une nouvelle tâche
+                                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                // 2. Fallback sur le navigateur uniquement si l'appli Telegram n'est pas installée
+                                try {
+                                    val fallbackIntent = android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse("https://t.me/$bot?start=${uiState.loginCode}")
+                                    ).apply {
+                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(fallbackIntent)
+                                } catch (e2: Exception) {
+                                    android.widget.Toast.makeText(context, "Impossible d'ouvrir Telegram", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                           colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.05f)),
+                           shape = RoundedCornerShape(16.dp),
+                           border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                             contentDescription = null,
+                             tint = Color.White,
+                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "En attente de confirmation...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.6f)
+                        Text("Ouvrir @${uiState.botUsername.ifBlank { "mycfrsurfTGBot" }}", color = Color.White)
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        if (uiState.isPolling) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                                          strokeWidth = 2.dp,
+                                                          color = MobileSecondary
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "En attente de la confirmation...",
+                                     style = MaterialTheme.typography.bodyMedium,
+                                     color = Color.White.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
+                    } else {
+                        // 2. LE MODE CONTOURNEMENT GOOGLE (Isolé pour ne pas gêner l'origine)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        OutlinedTextField(
+                            value = manualCode,
+                            onValueChange = { manualCode = it },
+                            label = { Text("Code de test Google Review", color = Color.White.copy(alpha = 0.6f)) },
+                                          placeholder = { Text("Ex: GOOGLE") },
+                                          singleLine = true,
+                                          colors = OutlinedTextFieldDefaults.colors(
+                                              focusedTextColor = Color.White,
+                                              unfocusedTextColor = Color.White,
+                                              focusedBorderColor = MobilePrimary,
+                                              unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                                          ),
+                                          shape = RoundedCornerShape(12.dp),
+                                          modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { viewModel.verifyManualCode(manualCode) },
+                               modifier = Modifier.fillMaxWidth().height(50.dp),
+                               colors = ButtonDefaults.buttonColors(containerColor = MobilePrimary),
+                               shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Se connecter (Mode Test)", fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Menu d'actions tout en bas
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        TextButton(onClick = { showGoogleInput = !showGoogleInput }) {
+                            Text(
+                                text = if (showGoogleInput) "Retour à l'authentification Telegram" else "Options de test (Google Review)",
+                                 color = Color.White.copy(alpha = 0.3f),
+                                 fontSize = 12.sp
+                            )
+                        }
+                        if (!showGoogleInput) {
+                            TextButton(onClick = { viewModel.generateLoginCode() }) {
+                                Text("Générez un nouveau code", color = Color.White.copy(alpha = 0.4f))
+                            }
+                        }
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                TextButton(onClick = { viewModel.generateLoginCode() }) {
-                    Text("Générer un nouveau code", color = Color.White.copy(alpha = 0.4f))
-                }
-            }
-
-            if (uiState.error != null) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = uiState.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { viewModel.generateLoginCode() },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Réessayer la connexion")
-                }
-            }
+        
         }
     }
 }

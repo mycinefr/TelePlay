@@ -60,11 +60,17 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             val url = settingsRepository.serverUrl.first()
             val bot = settingsRepository.botUsername.first()
+
+            // On ne met à jour que les infos serveur sans écraser le code si un polling est déjà en cours
             _uiState.value = _uiState.value.copy(serverUrl = url, botUsername = bot)
-            
+
             if (url.isNotEmpty()) {
                 fetchBotInfo()
-                generateLoginCode()
+                // SÉCURITÉ : Si on a déjà un code et qu'on est déjà en train de vérifier (polling),
+                // on ne régénère PAS de code en revenant de Telegram !
+                if (_uiState.value.loginCode == null && !_uiState.value.isPolling) {
+                    generateLoginCode()
+                }
             }
         }
     }
@@ -87,8 +93,8 @@ class LoginViewModel @Inject constructor(
     fun fetchBotInfo() {
         viewModelScope.launch {
             authRepository.getBotInfo().onSuccess { botInfo ->
-                _uiState.value = _uiState.value.copy(botUsername = botInfo.username)
-                settingsRepository.setBotUsername(botInfo.username)
+                _uiState.value = _uiState.value.copy(botUsername = botInfo.botUsername)
+                settingsRepository.setBotUsername(botInfo.botUsername)
             }
         }
     }
@@ -202,7 +208,7 @@ class LoginViewModel @Inject constructor(
                         if (e.message?.contains("expired") == true) {
                             _uiState.value = _uiState.value.copy(
                                 isPolling = false,
-                                error = "Code expired. Please generate a new one."
+                                error = "Code expiré. Générez en un nouveau..."
                             )
                             return@launch
                         }
@@ -216,7 +222,7 @@ class LoginViewModel @Inject constructor(
             // Timeout after 5 minutes
             _uiState.value = _uiState.value.copy(
                 isPolling = false,
-                error = "Login timeout. Please try again."
+                error = "Temps dépassé. Veuillez réessayez..."
             )
         }
     }
@@ -234,5 +240,42 @@ class LoginViewModel @Inject constructor(
         super.onCleared()
         stopPolling()
     }
-}
 
+    /**
+     * Vérifie manuellement un code d'accès de test pour le contournement Google Review.
+     */
+    /**
+     * Vérifie un code saisi manuellement (reproduit le comportement web).
+     */
+    fun verifyManualCode(code: String) {
+        if (code == "GOOGLE") {
+            stopPolling()
+            _uiState.value = _uiState.value.copy(
+                isPolling = false,
+                isLoggedIn = true,
+                error = null
+            )
+        } else {
+            // Comme sur le web, on tente de valider le code saisi auprès du serveur
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            viewModelScope.launch {
+                val result = authRepository.verifyLoginCode(code)
+                result.fold(
+                    onSuccess = {
+                        stopPolling()
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            isLoggedIn = true
+                        )
+                    },
+                    onFailure = {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = "Code invalide ou expiré."
+                        )
+                    }
+                )
+            }
+        }
+    }
+}

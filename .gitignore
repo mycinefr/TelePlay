@@ -127,3 +127,5 @@ Desktop.ini
 *.bak
 *.backup
 .cache/
+.env
+env

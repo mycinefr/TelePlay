@@ -105,7 +105,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "MyCineFR Play",
+                text = "MyCinéFR TV",
                 style = MaterialTheme.typography.headlineLarge,
                 color = TVTextPrimary,
                 fontWeight = FontWeight.Bold
@@ -120,7 +120,7 @@ fun LoginScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
-                    contentDescription = "Réglages du serveur",
+                    contentDescription = "Paramètres du serveur",
                     tint = if (uiState.showServerConfig) TVPrimary else TVTextSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.size(20.dp)
                 )
@@ -207,7 +207,7 @@ fun LoginScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         TVButton(
-                            text = "Enregistrer et redémarrer",
+                            text = "Enregistrer & redémarrer",
                             onClick = { viewModel.saveAndRestart() },
                             isPrimary = true
                         )
@@ -221,15 +221,15 @@ fun LoginScreen(
                 uiState.isLoading -> {
                     CircularProgressIndicator(
                         modifier = Modifier.size(56.dp),
-                        color = TVPrimary,
-                        strokeWidth = 4.dp,
-                        trackColor = TVPrimary.copy(alpha = 0.12f)
+                                              color = TVPrimary,
+                                              strokeWidth = 4.dp,
+                                              trackColor = TVPrimary.copy(alpha = 0.12f)
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Text(
-                        text = "Génération du code d'enregistrement",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TVTextSecondary
+                        text = "Génération du code...",
+                         style = MaterialTheme.typography.titleMedium,
+                         color = TVTextSecondary
                     )
                 }
 
@@ -237,22 +237,22 @@ fun LoginScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(64.dp)
-                            .background(TVError.copy(alpha = 0.1f), CircleShape)
+                        .size(64.dp)
+                        .background(TVError.copy(alpha = 0.1f), CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.ErrorOutline,
-                            contentDescription = null,
-                            tint = TVError,
-                            modifier = Modifier.size(36.dp)
+                             contentDescription = null,
+                             tint = TVError,
+                             modifier = Modifier.size(36.dp)
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = uiState.error!!,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TVError,
-                        textAlign = TextAlign.Center
+                         style = MaterialTheme.typography.titleMedium,
+                         color = TVError,
+                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(32.dp))
                     TVButton(
@@ -262,111 +262,69 @@ fun LoginScreen(
                 }
 
                 uiState.loginCode != null -> {
-                    // Instruction
+                    var typedCode by remember(uiState.loginCode) { mutableStateOf(uiState.loginCode ?: "") }
+                    var isInputFocused by remember { mutableStateOf(false) }
+
                     Text(
-                        text = "Enter ce code dans Telegram",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TVTextSecondary
+                        text = "Connexion avec Code",
+                         style = MaterialTheme.typography.titleLarge,
+                         color = TVTextSecondary
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Glassmorphic login code card
                     Surface(
                         color = Color.White.copy(alpha = 0.06f),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier
-                            .border(
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.border(
                                 width = 1.dp,
-                                brush = Brush.linearGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.12f),
-                                        Color.White.copy(alpha = 0.04f)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(20.dp)
+                                brush = Brush.linearGradient(listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.04f))),
+                                                       shape = RoundedCornerShape(20.dp)
                             )
                     ) {
-                        Box(
-                            modifier = Modifier.padding(horizontal = 40.dp, vertical = 20.dp)
-                        ) {
-                            Text(
-                                text = uiState.loginCode!!,
-                                style = MaterialTheme.typography.displayLarge.copy(
-                                    fontSize = 52.sp,
-                                    letterSpacing = 8.sp
-                                ),
-                                color = TVPrimary,
-                                fontWeight = FontWeight.Bold
+                        Column(modifier = Modifier.padding(horizontal = 40.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+
+                            Box(
+                                modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .background(TVSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .border(width = if (isInputFocused) 2.dp else 0.dp, color = if (isInputFocused) TVPrimary else Color.Transparent, shape = RoundedCornerShape(12.dp))
+                                .padding(horizontal = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                BasicTextField(
+                                    value = typedCode,
+                                    onValueChange = { if (it.length <= 6) typedCode = it.uppercase() },
+                                               modifier = Modifier.fillMaxWidth().onFocusChanged { isInputFocused = it.isFocused },
+                                               textStyle = MaterialTheme.typography.displayMedium.copy(color = TVPrimary, textAlign = TextAlign.Center, letterSpacing = 8.sp, fontWeight = FontWeight.Bold),
+                                               singleLine = true,
+                                               cursorBrush = SolidColor(TVPrimary),
+                                               keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            TVButton(
+                                text = "Se connecter",
+                                onClick = { viewModel.verifyManualCode(typedCode) },
+                                     isPrimary = true
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Bot instruction chip
-                    Surface(
-                        color = TVSurfaceVariant.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = null,
-                                tint = TVSecondary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Envoyer /login ${uiState.loginCode} to @mycfrsurfTGBot",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = TVTextPrimary
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Animated polling indicator
                     if (uiState.isPolling) {
-                        val dotAlpha1 by infiniteTransition.animateFloat(
-                            initialValue = 0.3f, targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(600),
-                                repeatMode = RepeatMode.Reverse
-                            ), label = "dot1"
-                        )
-                        val dotAlpha2 by infiniteTransition.animateFloat(
-                            initialValue = 0.3f, targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(600, delayMillis = 200),
-                                repeatMode = RepeatMode.Reverse
-                            ), label = "dot2"
-                        )
-                        val dotAlpha3 by infiniteTransition.animateFloat(
-                            initialValue = 0.3f, targetValue = 1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(600, delayMillis = 400),
-                                repeatMode = RepeatMode.Reverse
-                            ), label = "dot3"
-                        )
+                        val dotAlpha1 by infiniteTransition.animateFloat(initialValue = 0.3f, targetValue = 1f, animationSpec = infiniteRepeatable(animation = tween(600), repeatMode = RepeatMode.Reverse), label = "dot1")
+                        val dotAlpha2 by infiniteTransition.animateFloat(initialValue = 0.3f, targetValue = 1f, animationSpec = infiniteRepeatable(animation = tween(600, delayMillis = 200), repeatMode = RepeatMode.Reverse), label = "dot2")
+                        val dotAlpha3 by infiniteTransition.animateFloat(initialValue = 0.3f, targetValue = 1f, animationSpec = infiniteRepeatable(animation = tween(600, delayMillis = 400), repeatMode = RepeatMode.Reverse), label = "dot3")
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = TVSecondary,
-                                strokeWidth = 2.dp,
-                                trackColor = TVSecondary.copy(alpha = 0.12f)
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = TVSecondary, strokeWidth = 2.dp, trackColor = TVSecondary.copy(alpha = 0.12f))
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "En attente de la confirmation",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TVTextSecondary
-                            )
+                            Text("En attente de confirmation", style = MaterialTheme.typography.bodyMedium, color = TVTextSecondary)
                             Row(modifier = Modifier.padding(start = 2.dp)) {
                                 Text(".", color = TVSecondary.copy(alpha = dotAlpha1), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 Text(".", color = TVSecondary.copy(alpha = dotAlpha2), fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -380,7 +338,7 @@ fun LoginScreen(
                     TVButton(
                         text = "Générer un nouveau code",
                         onClick = { viewModel.generateLoginCode() },
-                        isPrimary = false
+                             isPrimary = false
                     )
                 }
             }

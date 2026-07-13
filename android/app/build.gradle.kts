@@ -22,8 +22,8 @@ android {
         applicationId = "com.mycinefr.tv"
         minSdk = 21
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.0.1"
+        versionCode = 12
+        versionName = "1.2"
 
         val serverUrl = localProperties.getProperty("TELEGRAM_TV_SERVER_URL", "")
         buildConfigField("String", "DEFAULT_SERVER_URL", "\"$serverUrl\"")
